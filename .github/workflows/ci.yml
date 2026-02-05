@@ -1,0 +1,150 @@
+name: CI - Validação de Código
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18, 20]
+    
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+      
+      - name: Configurar Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+      
+      - name: Verificar existência do index.html
+        run: |
+          echo "🔍 Verificando se index.html existe na raiz..."
+          if [ ! -f "index.html" ]; then
+            echo "❌ ERRO: Arquivo index.html não encontrado na raiz do projeto!"
+            echo "O GitHub Pages requer um arquivo index.html na raiz."
+            exit 1
+          fi
+          echo "✅ Arquivo index.html encontrado!"
+      
+      - name: Instalar dependências para validação
+        run: |
+          npm install -g htmlhint
+          echo "✅ HTMLHint instalado com sucesso"
+      
+      - name: Executar Linter HTML
+        run: |
+          echo "🔍 Executando validação de HTML..."
+          htmlhint "**/*.html" || exit 1
+          echo "✅ HTML validado com sucesso!"
+      
+      - name: Verificar tamanho dos arquivos
+        run: |
+          echo "🔍 Verificando arquivos maiores que 500KB..."
+          large_files=$(find . -type f -size +500k -not -path "./.git/*" -not -path "./node_modules/*")
+          
+          if [ -n "$large_files" ]; then
+            echo "❌ ERRO: Os seguintes arquivos excedem 500KB:"
+            echo "$large_files"
+            exit 1
+          fi
+          echo "✅ Todos os arquivos estão dentro do limite de 500KB"
+      
+      - name: Varredura de comentários proibidos
+        run: |
+          echo "🔍 Verificando comentários e termos sensíveis..."
+          
+          # Buscar por TODO, FIXME
+          if grep -r -i -E "(TODO|FIXME)" --include="*.html" --include="*.css" --include="*.js" .; then
+            echo "❌ ERRO: Comentários TODO ou FIXME encontrados no código!"
+            echo "Remova todos os comentários de desenvolvimento antes de fazer o merge."
+            exit 1
+          fi
+          
+          # Buscar por termos sensíveis
+          if grep -r -i -E "(senha|password)" --include="*.html" --include="*.css" --include="*.js" .; then
+            echo "❌ ERRO: Termos sensíveis (senha/password) encontrados no código!"
+            exit 1
+          fi
+          
+          echo "✅ Nenhum comentário proibido ou termo sensível encontrado"
+      
+      - name: Validar links e caminhos de imagens
+        run: |
+          echo "🔍 Validando links e caminhos de imagens..."
+          
+          # Instalar ferramenta para validação
+          npm install -g link-check || true
+          
+          # Script Python para validar links locais e imagens
+          cat > validate_links.py << 'EOF'
+          import re
+          import os
+          import sys
+          from pathlib import Path
+          
+          errors = []
+          
+          # Encontrar todos os arquivos HTML
+          html_files = list(Path('.').rglob('*.html'))
+          
+          for html_file in html_files:
+              if '.git' in str(html_file) or 'node_modules' in str(html_file):
+                  continue
+                  
+              with open(html_file, 'r', encoding='utf-8') as f:
+                  content = f.read()
+              
+              # Verificar imagens locais
+              img_pattern = r'<img[^>]+src=["\']((?!http)[^"\']+)["\']'
+              images = re.findall(img_pattern, content)
+              
+              for img_path in images:
+                  # Limpar o caminho
+                  img_path = img_path.split('?')[0].split('#')[0]
+                  full_path = os.path.join(os.path.dirname(html_file), img_path)
+                  
+                  if not os.path.exists(full_path) and not os.path.exists(img_path):
+                      errors.append(f"❌ Imagem não encontrada: {img_path} em {html_file}")
+              
+              # Verificar links locais (href)
+              link_pattern = r'href=["\']((?!http|#|mailto:)[^"\']+)["\']'
+              links = re.findall(link_pattern, content)
+              
+              for link_path in links:
+                  link_path = link_path.split('?')[0].split('#')[0]
+                  if link_path and not link_path.startswith('#'):
+                      full_path = os.path.join(os.path.dirname(html_file), link_path)
+                      
+                      if not os.path.exists(full_path) and not os.path.exists(link_path):
+                          errors.append(f"❌ Link local não encontrado: {link_path} em {html_file}")
+          
+          if errors:
+              print("\n".join(errors))
+              sys.exit(1)
+          else:
+              print("✅ Todos os links e imagens locais são válidos!")
+          EOF
+          
+          python3 validate_links.py || exit 1
+      
+      - name: Resumo da Validação
+        if: success()
+        run: |
+          echo "🎉 =================================="
+          echo "🎉 VALIDAÇÃO CONCLUÍDA COM SUCESSO!"
+          echo "🎉 =================================="
+          echo ""
+          echo "✅ index.html existe na raiz"
+          echo "✅ HTML validado pelo Linter"
+          echo "✅ Nenhum arquivo excede 500KB"
+          echo "✅ Sem comentários TODO/FIXME"
+          echo "✅ Sem termos sensíveis no código"
+          echo "✅ Links e imagens validados"
+          echo ""
+          echo "O código está pronto para produção! 🚀"
