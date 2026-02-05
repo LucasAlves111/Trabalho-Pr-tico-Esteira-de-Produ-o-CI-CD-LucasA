@@ -1,0 +1,75 @@
+name: CD - Deploy para GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+      
+      - name: Configurar GitHub Pages
+        uses: actions/configure-pages@v4
+      
+      - name: Validação final antes do deploy
+        run: |
+          echo " Executando validação final antes do deploy..."
+          
+          # Verificar se index.html existe
+          if [ ! -f "index.html" ]; then
+            echo " ERRO: index.html não encontrado!"
+            exit 1
+          fi
+          
+          echo " Validação final aprovada!"
+      
+      - name: Upload dos arquivos
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+      
+      - name: Deploy para GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+      
+      - name: Notificação de sucesso
+        if: success()
+        run: |
+          echo " ====================================="
+          echo " DEPLOY REALIZADO COM SUCESSO!"
+          echo " ====================================="
+          echo ""
+          echo " Site publicado no GitHub Pages"
+          echo " URL: ${{ steps.deployment.outputs.page_url }}"
+          echo ""
+          echo "O site está no ar! "
+      
+      - name: Notificação de falha
+        if: failure()
+        run: |
+          echo " ====================================="
+          echo " FALHA NO DEPLOY!"
+          echo " ====================================="
+          echo ""
+          echo "O deploy para o GitHub Pages falhou."
+          echo "Verifique os logs acima para mais detalhes."
+          echo ""
+          echo "  Ação necessária: Revisar e corrigir os erros."

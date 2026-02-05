@@ -24,59 +24,59 @@ jobs:
       
       - name: Verificar existência do index.html
         run: |
-          echo "🔍 Verificando se index.html existe na raiz..."
+          echo " Verificando se index.html existe na raiz..."
           if [ ! -f "index.html" ]; then
-            echo "❌ ERRO: Arquivo index.html não encontrado na raiz do projeto!"
+            echo " ERRO: Arquivo index.html não encontrado na raiz do projeto!"
             echo "O GitHub Pages requer um arquivo index.html na raiz."
             exit 1
           fi
-          echo "✅ Arquivo index.html encontrado!"
+          echo "Arquivo index.html encontrado!"
       
       - name: Instalar dependências para validação
         run: |
           npm install -g htmlhint
-          echo "✅ HTMLHint instalado com sucesso"
+          echo " HTMLHint instalado com sucesso"
       
       - name: Executar Linter HTML
         run: |
-          echo "🔍 Executando validação de HTML..."
+          echo " Executando validação de HTML..."
           htmlhint "**/*.html" || exit 1
-          echo "✅ HTML validado com sucesso!"
+          echo " HTML validado com sucesso!"
       
       - name: Verificar tamanho dos arquivos
         run: |
-          echo "🔍 Verificando arquivos maiores que 500KB..."
+          echo "Verificando arquivos maiores que 500KB..."
           large_files=$(find . -type f -size +500k -not -path "./.git/*" -not -path "./node_modules/*")
           
           if [ -n "$large_files" ]; then
-            echo "❌ ERRO: Os seguintes arquivos excedem 500KB:"
+            echo " ERRO: Os seguintes arquivos excedem 500KB:"
             echo "$large_files"
             exit 1
           fi
-          echo "✅ Todos os arquivos estão dentro do limite de 500KB"
+          echo " Todos os arquivos estão dentro do limite de 500KB"
       
       - name: Varredura de comentários proibidos
         run: |
-          echo "🔍 Verificando comentários e termos sensíveis..."
+          echo " Verificando comentários e termos sensíveis..."
           
           # Buscar por TODO, FIXME
           if grep -r -i -E "(TODO|FIXME)" --include="*.html" --include="*.css" --include="*.js" .; then
-            echo "❌ ERRO: Comentários TODO ou FIXME encontrados no código!"
+            echo " ERRO: Comentários TODO ou FIXME encontrados no código!"
             echo "Remova todos os comentários de desenvolvimento antes de fazer o merge."
             exit 1
           fi
           
           # Buscar por termos sensíveis
           if grep -r -i -E "(senha|password)" --include="*.html" --include="*.css" --include="*.js" .; then
-            echo "❌ ERRO: Termos sensíveis (senha/password) encontrados no código!"
+            echo " ERRO: Termos sensíveis (senha/password) encontrados no código!"
             exit 1
           fi
           
-          echo "✅ Nenhum comentário proibido ou termo sensível encontrado"
+          echo " Nenhum comentário proibido ou termo sensível encontrado"
       
       - name: Validar links e caminhos de imagens
         run: |
-          echo "🔍 Validando links e caminhos de imagens..."
+          echo "Validando links e caminhos de imagens..."
           
           # Instalar ferramenta para validação
           npm install -g link-check || true
@@ -110,7 +110,7 @@ jobs:
                   full_path = os.path.join(os.path.dirname(html_file), img_path)
                   
                   if not os.path.exists(full_path) and not os.path.exists(img_path):
-                      errors.append(f"❌ Imagem não encontrada: {img_path} em {html_file}")
+                      errors.append(f" Imagem não encontrada: {img_path} em {html_file}")
               
               # Verificar links locais (href)
               link_pattern = r'href=["\']((?!http|#|mailto:)[^"\']+)["\']'
@@ -122,13 +122,13 @@ jobs:
                       full_path = os.path.join(os.path.dirname(html_file), link_path)
                       
                       if not os.path.exists(full_path) and not os.path.exists(link_path):
-                          errors.append(f"❌ Link local não encontrado: {link_path} em {html_file}")
+                          errors.append(f" Link local não encontrado: {link_path} em {html_file}")
           
           if errors:
               print("\n".join(errors))
               sys.exit(1)
           else:
-              print("✅ Todos os links e imagens locais são válidos!")
+              print(" Todos os links e imagens locais são válidos!")
           EOF
           
           python3 validate_links.py || exit 1
@@ -136,15 +136,15 @@ jobs:
       - name: Resumo da Validação
         if: success()
         run: |
-          echo "🎉 =================================="
-          echo "🎉 VALIDAÇÃO CONCLUÍDA COM SUCESSO!"
-          echo "🎉 =================================="
+          echo " =================================="
+          echo " VALIDAÇÃO CONCLUÍDA COM SUCESSO!"
+          echo " =================================="
           echo ""
-          echo "✅ index.html existe na raiz"
-          echo "✅ HTML validado pelo Linter"
-          echo "✅ Nenhum arquivo excede 500KB"
-          echo "✅ Sem comentários TODO/FIXME"
-          echo "✅ Sem termos sensíveis no código"
-          echo "✅ Links e imagens validados"
+          echo " index.html existe na raiz"
+          echo " HTML validado pelo Linter"
+          echo " Nenhum arquivo excede 500KB"
+          echo " Sem comentários TODO/FIXME"
+          echo " Sem termos sensíveis no código"
+          echo " Links e imagens validados"
           echo ""
-          echo "O código está pronto para produção! 🚀"
+          echo "O código está pronto para produção! "
